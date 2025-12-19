@@ -1,5 +1,13 @@
 import Foundation
 
+struct Universities: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let slug: String
+    let createdAt: Date
+    let updatedAt: Date
+}
+
 struct FoodDeals: Decodable, Identifiable {
     let id: String
     let title: String
@@ -13,3 +21,4 @@ struct FoodDeals: Decodable, Identifiable {
     let universityId: String
     let createdAt: Date
 }
+

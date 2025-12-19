@@ -1,17 +1,8 @@
 import SwiftUI
-import Foundation
-import Supabase
-
-let supabase = SupabaseClient(
-  supabaseURL: URL(string: "https://yiuejlyxnfwhxhlnqlcd.supabase.co")!,
-  supabaseKey: "sb_publishable_1wagIVx1J5-QoaQku-jmag_drH3Ka95"
-)
 
 struct ContentView: View {
-    @State private var universities: [Universities] = []
-    @State private var food_deals: [FoodDeals] = []
-    @State private var isLoading = true
-    @State private var loadError: Error?
+    @StateObject private var universitiesVM = UniversitiesViewModel()
+    @StateObject private var foodDealsVM = FoodDealsViewModel()
 
     var body: some View {
         NavigationView {
@@ -22,14 +13,15 @@ struct ContentView: View {
             .overlay(overlayView)
             .navigationTitle("SneakOut")
             .task {
-                await loadData()
+                await loadAll()
             }
         }
     }
 
+
     private var universitiesSection: some View {
         Section("Universities") {
-            ForEach(universities) { university in
+            ForEach(universitiesVM.universities) { university in
                 Text(university.name)
             }
         }
@@ -37,11 +29,11 @@ struct ContentView: View {
 
     private var foodDealsSection: some View {
         Section("Food Deals") {
-            ForEach(food_deals) { deal in
+            ForEach(foodDealsVM.foodDeals) { deal in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(deal.title)
                         .font(.headline)
-                    if let university = universities.first(where: { $0.id == deal.universityId }) {
+                    if let university = universitiesVM.universities.first(where: { $0.id == deal.universityId }) {
                         Text(university.name)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
@@ -51,43 +43,27 @@ struct ContentView: View {
         }
     }
 
+
     private var overlayView: some View {
         Group {
-            if isLoading {
+            if universitiesVM.isLoading || foodDealsVM.isLoading {
                 ProgressView()
-            } else if let loadError {
-                Text("Error: \(loadError.localizedDescription)")
+            } else if let error = universitiesVM.loadError ?? foodDealsVM.loadError {
+                Text("Error: \(error.localizedDescription)")
                     .foregroundColor(.red)
                     .multilineTextAlignment(.center)
                     .padding()
-            } else if universities.isEmpty && food_deals.isEmpty {
+            } else if universitiesVM.universities.isEmpty && foodDealsVM.foodDeals.isEmpty {
                 Text("No data")
                     .foregroundColor(.secondary)
             }
         }
     }
-    
-    func loadData() async {
-        isLoading = true
-        loadError = nil
-        do {
-            let universitiesResult: [Universities] = try await supabase
-                .from("universities")
-                .select()
-                .execute()
-                .value
 
-            let foodDealsResult: [FoodDeals] = try await supabase
-                .from("food_deals")
-                .select()
-                .execute()
-                .value
 
-            universities = universitiesResult
-            food_deals = foodDealsResult
-        } catch {
-            loadError = error
-        }
-        isLoading = false
+    private func loadAll() async {
+        async let loadUniversities = universitiesVM.load()
+        async let loadFoodDeals = foodDealsVM.load()
+        _ = await (loadUniversities, loadFoodDeals)
     }
 }
